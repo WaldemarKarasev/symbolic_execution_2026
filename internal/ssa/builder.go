@@ -2,9 +2,15 @@
 package ssa
 
 import (
+	"fmt"
+	"go/ast"
+	"go/importer"
+	"go/parser"
 	"go/token"
+	"go/types"
 
 	"golang.org/x/tools/go/ssa"
+	"golang.org/x/tools/go/ssa/ssautil"
 )
 
 // Builder отвечает за построение SSA из исходного кода Go
@@ -26,15 +32,36 @@ func NewBuilder() *Builder {
 func (b *Builder) ParseAndBuildSSA(source string, funcName string) (*ssa.Function, error) {
 	// TODO: Реализовать
 	// Шаги:
-	// 1. Парсинг исходного кода с помощью go/parser
-	// 2. Создание SSA программы
-	// 3. Поиск нужной функции по имени
+	file, err := parser.ParseFile(b.fset, "virt-file.go", source, 0)
+
+	if err != nil {
+		return nil, err
+	}
+
+	pkg := types.NewPackage("input", file.Name.Name)
+
+	conf := &types.Config{
+		Importer: importer.Default(),
+	}
+	// // 2. Создание SSA программы
+	ssaPkg, _, err := ssautil.BuildPackage(conf, b.fset, pkg, []*ast.File{file}, ssa.InstantiateGenerics)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// // 3. Поиск нужной функции по имени
+	ssaFunc := ssaPkg.Func(funcName)
+
+	if ssaFunc == nil {
+		return nil, fmt.Errorf("Failed to find funcName: %s", funcName)
+	}
+
+	return ssaFunc, nil
 
 	// Подсказки:
 	// - Используйте parser.ParseFile для парсинга
 	// - Создайте packages.Config и загрузите пакет
 	// - Используйте ssautil.CreateProgram для создания SSA
 	// - Найдите функцию в SSA программе
-
-	panic("не реализовано")
 }

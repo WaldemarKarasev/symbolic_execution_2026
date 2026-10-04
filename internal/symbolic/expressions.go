@@ -1,7 +1,10 @@
 // Package symbolic содержит конкретные реализации символьных выражений
 package symbolic
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // SymbolicExpression - базовый интерфейс для всех символьных выражений
 type SymbolicExpression interface {
@@ -105,24 +108,67 @@ type BinaryOperation struct {
 
 // NewBinaryOperation создаёт новую бинарную операцию
 func NewBinaryOperation(left, right SymbolicExpression, op BinaryOperator) *BinaryOperation {
-	// TODO: Реализовать
-	// Создать новую бинарную операцию и проверить совместимость типов
-	panic("не реализовано")
+
+	if left == nil || right == nil {
+		panic("BinaryOperation operands cannot be nil!")
+	}
+
+	switch op {
+	case ADD, SUB, MUL, DIV, MOD:
+		// For now arifmetic only for IntType. TODO for FloatTypes
+		if left.Type() != IntType || right.Type() != IntType {
+			panic(fmt.Sprintf("operator %s requires IntTypes operands, got %s and %s", op, left.Type(), right.Type()))
+		}
+
+	case LT, LE, GT, GE:
+		// For now comparison operations only for IntType. TODO for FloatTypes
+		if left.Type() != IntType || right.Type() != IntType {
+			panic(fmt.Sprintf("operator %s requires IntTypes operands, got %s and %s", op, left.Type(), right.Type()))
+		}
+
+	case EQ, NE:
+		// These operation can be used for any equal types
+		if left.Type() != right.Type() {
+			panic(fmt.Sprintf("operator %s requires equal type operands, got %s and %s", op, left.Type(), right.Type()))
+		}
+
+		// For now support only IntType
+		if left.Type() != IntType {
+			panic(fmt.Sprintf("operator %s support only IntTypes operands, got %s and %s", op, left.Type(), right.Type()))
+		}
+
+	default:
+		panic(fmt.Sprintf("Unsupported operator %s with operands: %s and %s", op, left.Type(), right.Type()))
+	}
+
+	return &BinaryOperation{
+		Left:     left,
+		Right:    right,
+		Operator: op,
+	}
 }
 
 // Type возвращает результирующий тип операции
 func (bo *BinaryOperation) Type() ExpressionType {
-	// TODO: Реализовать
-	// Определить результирующий тип на основе операции и типов операндов
-	// Например: int + int = int, int < int = bool
-	panic("не реализовано")
+	switch bo.Operator {
+	case ADD, SUB, MOD, MUL, DIV:
+		return IntType
+	case EQ, NE, GT, GE, LT, LE:
+		return BoolType
+
+	default:
+		panic(fmt.Sprintf("Unknown binary operator: %s", bo.Operator))
+	}
 }
 
 // String возвращает строковое представление операции
 func (bo *BinaryOperation) String() string {
-	// TODO: Реализовать
-	// Формат: "(left operator right)"
-	panic("не реализовано")
+	return fmt.Sprintf(
+		"(%s %s %s)",
+		bo.Left.String(),
+		bo.Operator.String(),
+		bo.Right.String(),
+	)
 }
 
 // Accept реализует Visitor pattern
@@ -136,13 +182,43 @@ type LogicalOperation struct {
 	Operator LogicalOperator
 }
 
-// TODO: Реализуйте следующие методы в рамках домашнего задания
-
 // NewLogicalOperation создаёт новую логическую операцию
 func NewLogicalOperation(operands []SymbolicExpression, op LogicalOperator) *LogicalOperation {
-	// TODO: Реализовать
-	// Создать логическую операцию и проверить типы операндов
-	panic("не реализовано")
+	switch op {
+	case NOT:
+		if len(operands) != 1 {
+			panic("\"NOT\" operand requires only one operand!")
+		}
+
+	case IMPLIES:
+		if len(operands) != 2 {
+			panic("\"IMPLES\", \"AND\", \"OR\" requires exactly two operands")
+		}
+
+	case AND, OR:
+		if len(operands) < 2 {
+			panic(fmt.Sprintf("%s requires at least two operands", op.String()))
+		}
+
+	// TODO: ternary operator
+	default:
+		panic(fmt.Sprintf("Unknown operator: %s", op.String()))
+	}
+
+	for _, operand := range operands {
+		if operand == nil {
+			panic("LogicalExpression operand cannot be nil!")
+		}
+
+		if operand.Type() != BoolType {
+			panic(fmt.Sprintf("LogicalExpression operand requires BoolType operands, got %s", operand.Type()))
+		}
+	}
+
+	return &LogicalOperation{
+		Operands: append([]SymbolicExpression(nil), operands...),
+		Operator: op,
+	}
 }
 
 // Type возвращает тип логической операции (всегда bool)
@@ -152,11 +228,24 @@ func (lo *LogicalOperation) Type() ExpressionType {
 
 // String возвращает строковое представление логической операции
 func (lo *LogicalOperation) String() string {
-	// TODO: Реализовать
-	// Для NOT: "!operand"
-	// Для AND/OR: "(operand1 && operand2 && ...)"
-	// Для IMPLIES: "(operand1 => operand2)"
-	panic("не реализовано")
+	switch lo.Operator {
+	case NOT:
+		return "!" + lo.Operands[0].String()
+
+	case AND, OR, IMPLIES:
+		parts := make([]string, len(lo.Operands))
+
+		for i, operand := range lo.Operands {
+			parts[i] = operand.String()
+		}
+
+		separator := " " + lo.Operator.String() + " "
+
+		return "(" + strings.Join(parts, separator) + ")"
+
+	default:
+		panic(fmt.Sprintf("Unlnown logical operator: %d", lo.Operator))
+	}
 }
 
 // Accept реализует Visitor pattern

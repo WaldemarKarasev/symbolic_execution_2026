@@ -8,7 +8,10 @@ const (
 	IntType ExpressionType = iota
 	BoolType
 	ArrayType
-	// Добавьте другие типы по необходимости
+	// TODO
+	// FloatType
+	// StringType
+	// RefType
 )
 
 // String возвращает строковое представление типа
